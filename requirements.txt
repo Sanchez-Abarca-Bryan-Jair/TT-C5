@@ -7,3 +7,5 @@ scipy>=1.11
 
 SQLAlchemy>=2.0
 psycopg2-binary
+
+psycopg2-binary
