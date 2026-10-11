@@ -1,0 +1,8 @@
+{
+  "T": 24,
+  "n_features": 2,
+  "gcn_hidden": 32,
+  "lstm_hidden": 64,
+  "n_nodos": 22871,
+  "n_aristas": 63479
+}
