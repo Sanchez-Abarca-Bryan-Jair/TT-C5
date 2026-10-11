@@ -39,7 +39,7 @@ st.info(
 )
 
 if not artefactos_disponibles():
-    st.error("No se encontraron los artefactos del modelo en dashboard/data/")
+    st.error("No se encontraron los artefactos del modelo en data/")
     st.stop()
 
 # 1. Cargar Datos y Modelo

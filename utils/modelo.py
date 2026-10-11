@@ -5,11 +5,11 @@ Este módulo NO reconstruye el grafo vial ni reentrena nada en cada
 carga del dashboard: carga artefactos ya exportados desde el notebook
 de entrenamiento (modelo_gcn_lstm.ipynb) con la plantilla
 scripts/exportar_despues_de_entrenar.py. Mientras esos artefactos no
-existan en dashboard/data/, artefactos_disponibles() regresa False y
+existan en data/, artefactos_disponibles() regresa False y
 la página de Pronóstico se limita a explicarlo -- no se simula un
 pronóstico con pesos sin entrenar.
 
-Artefactos esperados en dashboard/data/:
+Artefactos esperados en data/:
     modelo_gcn_lstm.pt      state_dict del modelo entrenado
     nodos_grafo.csv         nodo_id, idx, lat, lon (mismo orden que edge_index)
     edge_index.npy          array (2, E), en índices -- no nodo_id de OSM
@@ -68,7 +68,7 @@ class ModeloGCNLSTM(nn.Module):
 
 
 def artefactos_disponibles() -> bool:
-    """True solo si los 4 archivos esperados existen en dashboard/data/."""
+    """True solo si los 4 archivos esperados existen en data/."""
     return all(p.exists() for p in [RUTA_MODELO, RUTA_NODOS, RUTA_EDGES, RUTA_METADATOS])
 
 

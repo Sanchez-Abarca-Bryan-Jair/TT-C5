@@ -43,7 +43,7 @@ dashboard/
 1. Que termine el entrenamiento (la corrida con GPU).
 2. En ESE MISMO notebook y kernel, pegar y correr
    `scripts/exportar_despues_de_entrenar.py` como celda final. Genera en
-   `dashboard/data/`:
+   `data/`:
    - `modelo_gcn_lstm.pt`
    - `nodos_grafo.csv`
    - `edge_index.npy`
