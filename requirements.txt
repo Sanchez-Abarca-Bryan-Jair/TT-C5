@@ -9,3 +9,7 @@ SQLAlchemy>=2.0
 
 psycopg
 psycopg-binary
+
+
+torch
+torch_geometric
