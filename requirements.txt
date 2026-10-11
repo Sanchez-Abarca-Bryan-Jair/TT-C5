@@ -4,3 +4,6 @@ numpy>=1.26
 plotly>=5.24
 scipy>=1.11
 # Para reactivar el pronóstico (pronostico_pausado/): torch>=2.1 y torch_geometric>=2.5
+
+SQLAlchemy>=2.0
+psycopg2-binary
