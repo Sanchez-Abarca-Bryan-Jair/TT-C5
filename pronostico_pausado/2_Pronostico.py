@@ -17,7 +17,7 @@ from utils.modelo import (
 # ==========================================
 banner_html = """
 <div style="background: linear-gradient(90deg, #902441 0%, #202b46 100%); padding: 25px; border-radius: 10px; margin-bottom: 25px;">
-    <h1 style="color: white; font-size: 2.2rem; margin-top: 0; margin-bottom: 10px;">🔮 Pronóstico y Asignación Heurística</h1>
+    <h1 style="color: white; font-size: 2.2rem; margin-top: 0; margin-bottom: 10px;">Pronóstico y Asignación Heurística</h1>
     <p style="color: #e0e0e0; font-size: 1.1rem; margin: 0;">Proyección espacial de siniestros viales en Iztapalapa mediante GCN-LSTM</p>
 </div>
 """
