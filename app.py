@@ -26,6 +26,11 @@ pagina = st.navigation(
             title="Panorama histórico",
             icon=":material/bar_chart:",
         ),
+        st.Page(
+            "pronostico_pausado/2_Pronostico.py",
+            title="Pronóstico de Riesgo",
+            icon=":material/online_prediction:",
+        ),
     ],
     position="top",
 )

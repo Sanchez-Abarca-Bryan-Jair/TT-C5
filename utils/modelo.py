@@ -13,7 +13,7 @@ Artefactos esperados en dashboard/data/:
     modelo_gcn_lstm.pt      state_dict del modelo entrenado
     nodos_grafo.csv         nodo_id, idx, lat, lon (mismo orden que edge_index)
     edge_index.npy          array (2, E), en índices -- no nodo_id de OSM
-    metadatos_modelo.json   T, gcn_hidden, lstm_hidden usados al entrenar
+    metadatos_modelo.json   T, gcn_hidden, lstm_hidden, n_features usados al entrenar
 """
 import json
 from pathlib import Path
@@ -85,8 +85,9 @@ def cargar_artefactos():
     nodos_df = pd.read_csv(RUTA_NODOS).sort_values("idx").reset_index(drop=True)
     edge_index = torch.tensor(np.load(RUTA_EDGES), dtype=torch.long)
 
+    # El modelo ahora lee dinámicamente si tiene 1 o 2 características desde el JSON
     modelo = ModeloGCNLSTM(
-        n_features=1,
+        n_features=metadatos.get("n_features", 1),
         gcn_hidden=metadatos.get("gcn_hidden", 32),
         lstm_hidden=metadatos.get("lstm_hidden", 64),
     )
@@ -96,49 +97,61 @@ def cargar_artefactos():
     return modelo, nodos_df, edge_index, metadatos
 
 
-def construir_ventana_reciente(df_incidentes: pd.DataFrame, nodos_df: pd.DataFrame, T: int) -> np.ndarray:
+def construir_ventana_reciente(df_incidentes: pd.DataFrame, nodos_df: pd.DataFrame, T: int, n_features: int = 2) -> np.ndarray:
     """
-    Construye la matriz (T, N_nodos) de conteos de incidentes por hora,
-    usando las últimas T horas disponibles en df_incidentes.
-
-    LIMITACIÓN DOCUMENTADA: cada incidente se asigna a su nodo más
-    cercano por distancia euclidiana (lat, lon) vía cKDTree sobre
-    nodos_grafo.csv. Esto NO es lo mismo que ox.distance.nearest_nodes(),
-    que usa la topología real de la red vial y fue el método usado para
-    construir nodo_a_idx durante el entrenamiento. Es una aproximación
-    razonable para esta versión preliminar del dashboard (evita depender
-    de osmnx y de red en producción), pero introduce un desajuste menor
-    frente al preprocesamiento de entrenamiento -- debe mencionarse como
-    limitación en el documento del TT si esta ruta llega a producción.
+    Construye la matriz (T, N_nodos, n_features) de conteos y tasas.
+    Para n_features=2, incluye la tasa histórica normalizada por nodo.
     """
     arbol = cKDTree(nodos_df[["lat", "lon"]].values)
 
     hora_maxima = df_incidentes["fecha_hora_rango"].max()
     horas_ventana = pd.date_range(end=hora_maxima, periods=T, freq="h")
 
-    matriz = np.zeros((T, len(nodos_df)), dtype=np.float32)
+    # 1. Matriz de conteos dinámicos en la ventana T
+    matriz_conteo = np.zeros((T, len(nodos_df)), dtype=np.float32)
     ventana_df = df_incidentes[df_incidentes["fecha_hora_rango"].isin(horas_ventana)]
 
-    if ventana_df.empty:
-        return matriz  # sin incidentes en la ventana -> todo ceros, es un resultado válido
+    if not ventana_df.empty:
+        _, indices_nodo = arbol.query(ventana_df[["latitud", "longitud"]].values)
+        fila_por_hora = {hora: i for i, hora in enumerate(horas_ventana)}
 
-    _, indices_nodo = arbol.query(ventana_df[["latitud", "longitud"]].values)
-    fila_por_hora = {hora: i for i, hora in enumerate(horas_ventana)}
+        for fila_hora, idx_nodo in zip(ventana_df["fecha_hora_rango"].map(fila_por_hora), indices_nodo):
+            if pd.notna(fila_hora):
+                matriz_conteo[int(fila_hora), idx_nodo] += 1
 
-    for fila_hora, idx_nodo in zip(ventana_df["fecha_hora_rango"].map(fila_por_hora), indices_nodo):
-        if pd.notna(fila_hora):
-            matriz[int(fila_hora), idx_nodo] += 1
+    # Si el modelo antiguo solo pedía 1 feature, retornamos solo el conteo
+    if n_features == 1:
+        return matriz_conteo
 
-    return matriz
+    # 2. Reconstrucción de la tasa histórica normalizada (Feature 2)
+    # Contamos todos los incidentes del historial
+    _, indices_totales = arbol.query(df_incidentes[["latitud", "longitud"]].values)
+    conteos_historicos = np.bincount(indices_totales, minlength=len(nodos_df))
+
+    # Aplicamos log1p y min-max al igual que en modelo_gcn_lstm.ipynb
+    tasa_log = np.log1p(conteos_historicos)
+    tasa_norm = tasa_log / (tasa_log.max() + 1e-9)
+    tasa_norm = tasa_norm.astype(np.float32)
+
+    # Expandimos a (T, N_nodos) para que cada hora tenga el mismo valor
+    ventana_tasa = np.tile(tasa_norm, (T, 1))
+
+    # Apilamos en el último eje para lograr la forma final: (T, N_nodos, 2)
+    matriz_final = np.stack([matriz_conteo, ventana_tasa], axis=-1)
+    
+    return matriz_final
 
 
 def predecir_riesgo(modelo: "ModeloGCNLSTM", matriz_ventana: np.ndarray, edge_index: torch.Tensor) -> np.ndarray:
     """
-    Corre un forward pass y aplica sigmoide -- el modelo se entrenó con
-    BCEWithLogitsLoss, así que su salida cruda es un logit, no todavía
-    una probabilidad.
+    Corre un forward pass y aplica sigmoide.
     """
-    entrada = torch.tensor(matriz_ventana, dtype=torch.float32).unsqueeze(-1)
+    entrada = torch.tensor(matriz_ventana, dtype=torch.float32)
+    
+    # Aseguramos que la entrada tenga la dimensión del canal si solo llegó 2D
+    if entrada.ndim == 2:
+        entrada = entrada.unsqueeze(-1)
+        
     with torch.no_grad():
         logits = modelo(entrada, edge_index)
     return torch.sigmoid(logits).squeeze(-1).numpy()
