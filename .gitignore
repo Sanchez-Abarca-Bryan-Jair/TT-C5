@@ -5,8 +5,8 @@ __pycache__/
 # regeneran con scripts/exportar_despues_de_entrenar.py -- no hace
 # falta versionarlos en git.
 # data/*.pt
-data/*.npy
-data/*.csv
+# data/*.npy
+# data/*.csv
 # data/*.json
 !data/.gitkeep
 !data/df_hour_clean.csv
