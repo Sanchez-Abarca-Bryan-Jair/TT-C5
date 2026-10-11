@@ -207,7 +207,7 @@ with col4:
     st.metric("Tiempo Total de Operación", f"{nodo_top_1['tiempo_total_min']:.1f} min", delta="- Vía Óptima", delta_color="inverse")
 
 st.markdown("<br>", unsafe_allow_html=True)
-st.markdown("📋 **Plan de ruta integral para las 5 zonas críticas:**")
+st.markdown("**Plan de ruta integral para las 5 zonas críticas:**")
 
 st.dataframe(
     top_5_nodos[["nodo_id", "probabilidad_pct", "base_c5", "t_respuesta_min", "hospital", "tiempo_total_min"]],
