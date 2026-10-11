@@ -12,3 +12,4 @@ data/*.json
 !data/df_hour_clean.csv
 static/inicio/hero.png
 static/inicio/arquitectura.png
+.streamlit/secrets.toml
