@@ -6,19 +6,25 @@ def cargar_incidentes() -> pd.DataFrame:
     # Conexión a Neon usando los secretos de Streamlit
     conn = st.connection("neon_db", type="sql")
     
-    # Consulta SQL directa (PostgreSQL hace el filtrado pesado de nulos y duplicados)
+    # Consulta SQL optimizada: Trae las variables originales + el cruce con el clima y calendario
     query = """
-        SELECT fecha_creacion, hora_creacion, dia_semana, tipo_incidente_c4,
-               incidente_c4, colonia_catalogo, longitud, latitud,
-               anio, mes, hora, es_fin_de_semana, franja_horaria,
-               target, fecha_hora, fecha_hora_rango
-        FROM siniestros_historico
-        WHERE coord_valida = TRUE AND es_duplicado_c5 = FALSE;
+        SELECT 
+            s.fecha_creacion, s.hora_creacion, s.dia_semana, s.tipo_incidente_c4,
+            s.incidente_c4, s.colonia_catalogo, s.longitud, s.latitud,
+            s.anio, s.mes, s.hora, s.es_fin_de_semana, s.franja_horaria,
+            s.target, s.fecha_hora, s.fecha_hora_rango,
+            -- Nuevas variables exógenas listas para el modelo
+            c.tipo_dia_cultural, c.es_quincena, c.es_festivo_oficial,
+            cl.temperatura_c, cl.precipitacion_mm
+        FROM siniestros_historico s
+        LEFT JOIN cat_calendario c ON s.fecha_creacion = c.fecha
+        LEFT JOIN cat_clima_historico cl ON s.dt_creacion = cl.dt_hora
+        WHERE s.coord_valida = TRUE AND s.es_duplicado_c5 = FALSE;
     """
     
     df = conn.query(query)
     
-    # Aseguramos el formato datetime para que Streamlit y Plotly no fallen
+    # Mantenemos las conversiones por si tu dashboard hace agrupaciones directas con estas columnas
     df["fecha_hora"] = pd.to_datetime(df["fecha_hora"])
     df["fecha_hora_rango"] = pd.to_datetime(df["fecha_hora_rango"])
     
